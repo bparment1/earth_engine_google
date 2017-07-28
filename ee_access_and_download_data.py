@@ -116,6 +116,31 @@ path = image1.getDownloadUrl({
 
 path
 
+import requests
+r = requests.get(path)
+
+import urllib
+
+testfile = urllib.URLopener()
+testfile.retrieve(path, "srtm90_v4.tif")
+
+
+######################## END OF SCRIPT ##############
+
+https://blog.webkid.io/analysing-satellite-images-with-google-earth-engine/
+#landsat = ee.Image('LANDSAT/LC8_L1T_TOA
+#/LC81230322014135LGN00').select(['B4', 'B3', 'B2']);
+#Create a geometry representing an export region.
+
+#geometry = ee.Geometry.Rectangle([116.2621, 39.8412, 116.4849, 40.01236]);
+#Export the image, specifying scale and region.
+
+#export.image.toDrive({
+#    image: landsat,
+#    description: 'imageToDriveExample',
+#    scale: 30,  
+#    region: geometry
+#    });
 
 
 
