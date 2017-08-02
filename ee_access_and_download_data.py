@@ -8,15 +8,16 @@ This is a temporary script file.
 #
 #!/usr/bin/python
 #
-#Script to process data for the DSS-SSI website.
-#Data are first clipped to match the Maine study area.
+#Script to access and downlaod data from Google Earth Engine.
+#Landsat composite datasets for coastal changes studies.
+#
 #
 # TODO:
-#  - functionalize to encapsulate high level procedural steps
+#  - list landsat filter data by date steps
 #
 # Authors: Benoit Parmentier 
-# Created on: 03/24/2014
-# Updated on: 03/29/2014
+# Created on: 07/24/2017
+# Updated on: 08/02/2017
 
 import os, glob
 import subprocess
@@ -33,6 +34,8 @@ from osgeo import gdal_array
 from osgeo import gdalconst
 
 import ee
+import sys
+import matplotlib.pyplot as plt
 #import ee.mapclient #no access
 
 ################ NOW FUNCTIONS  ###################
@@ -41,9 +44,10 @@ import ee
 # Functions used in the script 
 ##------------------
 
-script_path = "/home/bparmentier/Google Drive/Data/SESYNC/earthengine_google/scripts"
+#script_path = "/home/bparmentier/Google Drive/Data/SESYNC/earthengine_google/scripts" #bpi 
+script_path ="/home/bparmentier/z_drive/Data/projects/earthengine_google/scripts" #bps 
 
-import sys
+
 if script_path not in sys.path:
     sys.path.append(script_path)
 
@@ -54,7 +58,7 @@ from ee_acces_and_download_data_functions_07242017 import *
 ########## READ AND PARSE PARAMETERS AND ARGUMENTS ######### 
 
 #in_dir = "/home/parmentier/Data/IPLANT_project/Maine_interpolation/DSS_SSI_data/"
-in_dir ="/home/bparmentier/Google Drive/Data/SESYNC/earthengine_google/outputs" 
+in_dir ="/home/bparmentier/z_drive/Data/projects/earthengine_google/outputs" 
 
 #Input shape file used to define the zonal regions: could be town or counties in this context
 shp_fname = os.path.join(in_dir,"county24.shp")
@@ -108,13 +112,14 @@ ee.Initialize()
 # Get a download URL for an image.
 image1 = ee.Image('srtm90_v4')
 
+### Download does not work out:
 path = image1.getDownloadUrl({
     'scale': 30,
     'crs': 'EPSG:4326',
     'region': '[[-120, 35], [-119, 35], [-119, 34], [-120, 34]]'
 })
 
-path
+print(path)
 
 import requests
 r = requests.get(path)
@@ -124,10 +129,44 @@ import urllib
 testfile = urllib.URLopener()
 testfile.retrieve(path, "srtm90_v4.tif")
 
+Export.
+#### Let's use export to Google drive option
+
+# Load a landsat image and select three bands.
+landsat = ee.Image('LANDSAT/LC8_L1T_TOA/LC81230322014135LGN00')
+landsat.select(['B4', 'B3', 'B2']
+
+# Create a geometry representing an export region.
+geometry = ee.Geometry.Rectangle([116.2621, 39.8412, 116.4849, 40.01236])
+
+# Export the image, specifying scale and region.
+Export.image.toDrive({
+  image: landsat,
+  description: 'imageToDriveExample',
+  scale: 30,
+  region: geometry
+});
+
+llx = 116.2621
+lly = 39.8412
+urx = 116.4849
+ury = 40.01236
+geometry = [[llx,lly], [llx,ury], [urx,ury], [urx,lly]]
+
+task_config = {
+    'description': 'imageToDriveExample',
+    'scale': 30,  
+    'region': geometry
+    }
+
+##Export does not work with python api, need to use batch mode
+task = ee.batch.Export.image(landsat, 'exportExample', task_config)
+
+task.start()
 
 ######################## END OF SCRIPT ##############
 
-https://blog.webkid.io/analysing-satellite-images-with-google-earth-engine/
+#https://blog.webkid.io/analysing-satellite-images-with-google-earth-engine/
 #landsat = ee.Image('LANDSAT/LC8_L1T_TOA
 #/LC81230322014135LGN00').select(['B4', 'B3', 'B2']);
 #Create a geometry representing an export region.
