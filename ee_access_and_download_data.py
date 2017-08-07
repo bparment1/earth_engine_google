@@ -17,7 +17,7 @@ This is a temporary script file.
 #
 # Authors: Benoit Parmentier 
 # Created on: 07/24/2017
-# Updated on: 08/02/2017
+# Updated on: 08/07/2017
 
 import os, glob
 import subprocess
@@ -74,7 +74,7 @@ CRS_reg = CRS_WGS84
 file_format = ".tif"
 NA_flag_val = -9999
 output_type = "Float32"
-out_suffix = "gee_07282017"
+out_suffix = "gee_08072017"
 
 w_extent_str = "-72 48 -65 41" #minx,maxy (upper left), maxx,miny (lower right)
 use_reg_extent = True
@@ -95,46 +95,33 @@ os.chdir(out_dir)        #set working directory
 #### PART I: GET EXTENT FIRST
 
 #Read in layers from data source,there is only one layer
-reg_area_poly = ogr.Open(shp_reg_outline).GetLayer()
+#reg_area_poly = ogr.Open(shp_reg_outline).GetLayer()
 
-if use_reg_extent==True:
-    w_extent, reg_area_poly_wgs84 = calculate_region_extent(shp_reg_outline,out_suffix_dst,CRS_dst,out_dir)
-    #w_extent= "-71.083923738042 47.4598539782516 -66.8854440488051 42.9171281482886"
-elif use_reg_extent==False:
-    w_extent = w_extent_str #this is in WGS84
-    #end if
+#if use_reg_extent==True:
+#    w_extent, reg_area_poly_wgs84 = calculate_region_extent(shp_reg_outline,out_suffix_dst,CRS_dst,out_dir)
+#    #w_extent= "-71.083923738042 47.4598539782516 -66.8854440488051 42.9171281482886"
+#elif use_reg_extent==False:
+#    w_extent = w_extent_str #this is in WGS84
+#    #end if
  
 ##### PART II :  ##########
 
 
 ee.Initialize()
 
-# Get a download URL for an image.
-image1 = ee.Image('srtm90_v4')
-
-### Download does not work out:
-path = image1.getDownloadUrl({
-    'scale': 30,
-    'crs': 'EPSG:4326',
-    'region': '[[-120, 35], [-119, 35], [-119, 34], [-120, 34]]'
-})
-
-print(path)
-
-import requests
-r = requests.get(path)
-
-import urllib
-
-testfile = urllib.URLopener()
-testfile.retrieve(path, "srtm90_v4.tif")
-
-Export.
 #### Let's use export to Google drive option
+
+#https://explorer.earthengine.google.com/#detail/LANDSAT%2FLT5_L1T_TOA_FMASK
+#USGS Landsat 5 TOA Reflectance (Orthorectified) with Fmask
+#Data availability (time)
+#Jan 1, 1984 - May 5, 2012
+#https://explorer.earthengine.google.com/#detail/LANDSAT%2FLT5_L1T_ANNUAL_TOA
+#32 days TOA or 
 
 # Load a landsat image and select three bands.
 landsat = ee.Image('LANDSAT/LC8_L1T_TOA/LC81230322014135LGN00')
-landsat.select(['B4', 'B3', 'B2']
+landsat.select(['B4', 'B3', 'B2'])
+landsat.select(['B1'])
 
 # Create a geometry representing an export region.
 geometry = ee.Geometry.Rectangle([116.2621, 39.8412, 116.4849, 40.01236])
@@ -152,6 +139,9 @@ lly = 39.8412
 urx = 116.4849
 ury = 40.01236
 geometry = [[llx,lly], [llx,ury], [urx,ury], [urx,lly]]
+
+geometry = ee.Geometry.Rectangle([116.2621, 39.8412, 116.4849, 40.01236])
+geometry = geometry['coordinates'][0]
 
 task_config = {
     'description': 'imageToDriveExample',
