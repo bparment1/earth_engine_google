@@ -17,7 +17,7 @@ This is a temporary script file.
 #
 # Authors: Benoit Parmentier 
 # Created on: 07/24/2017
-# Updated on: 08/07/2017
+# Updated on: 08/09/2017
 
 import os, glob
 import subprocess
@@ -53,7 +53,7 @@ if script_path not in sys.path:
 
 ### Add scripts here
 #from ee_acces_and_download_data_functions_07242017.py import *
-from ee_acces_and_download_data_functions_07242017 import *
+from ee_access_and_download_data_functions import *
 
 ########## READ AND PARSE PARAMETERS AND ARGUMENTS ######### 
 
@@ -123,16 +123,25 @@ landsat = ee.Image('LANDSAT/LC8_L1T_TOA/LC81230322014135LGN00')
 landsat.select(['B4', 'B3', 'B2'])
 landsat.select(['B1'])
 
+landsat = ee.Image('LANDSAT/LT5_L1T_32DAY_TOA')
+landsat.select(['B4', 'B3', 'B2']) #Green (B1), Red (B2), B3 (NIR), B
+landsat.select(['B1'])
+
+landsat.getInfo()
+
+### Get elevation data for example:
+image = ee.Image('CGIAR/SRTM90_V4');
+image_info = image.getInfo() #this is a dict
+
+print "image_info['bands']: ", image_info['bands']
+list_bands_info = image_info['bands']
+
+type(list_bands_info[0])
+
 # Create a geometry representing an export region.
 geometry = ee.Geometry.Rectangle([116.2621, 39.8412, 116.4849, 40.01236])
 
 # Export the image, specifying scale and region.
-Export.image.toDrive({
-  image: landsat,
-  description: 'imageToDriveExample',
-  scale: 30,
-  region: geometry
-});
 
 llx = 116.2621
 lly = 39.8412
@@ -143,15 +152,14 @@ geometry = [[llx,lly], [llx,ury], [urx,ury], [urx,lly]]
 geometry = ee.Geometry.Rectangle([116.2621, 39.8412, 116.4849, 40.01236])
 geometry = geometry['coordinates'][0]
 
-task_config = {
-    'description': 'imageToDriveExample',
-    'scale': 30,  
-    'region': geometry
-    }
-
 ##Export does not work with python api, need to use batch mode
-task = ee.batch.Export.image(landsat, 'exportExample', task_config)
 
+##Note description will pick the name of output file, it should not include the extenion
+task = ee.batch.Export.image.toDrive(image=image,description='SRTM90_V4',folder='Data_SESYNC_earthengine',region=geometry,scale=30)
+task.start()
+
+## THis is still not working here:
+task = ee.batch.Export.image.toDrive(image=landsat,description='exportTest3',folder='./Data/SESYNC/earthengine_google',region=geometry,scale=30)
 task.start()
 
 ######################## END OF SCRIPT ##############
