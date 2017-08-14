@@ -17,7 +17,7 @@ This is a temporary script file.
 #
 # Authors: Benoit Parmentier 
 # Created on: 07/24/2017
-# Updated on: 08/09/2017
+# Updated on: 08/14/2017
 
 import os, glob
 import subprocess
@@ -74,9 +74,13 @@ CRS_reg = CRS_WGS84
 file_format = ".tif"
 NA_flag_val = -9999
 output_type = "Float32"
-out_suffix = "gee_08072017"
+out_suffix = "gee_08142017"
 
-w_extent_str = "-72 48 -65 41" #minx,maxy (upper left), maxx,miny (lower right)
+#w_extent_str = "-72 48 -65 41" #minx,maxy (upper left), maxx,miny (lower right)
+w_extent_str = "-80.25834 39.80676 -74.74974 35.56247"
+#extent      : 1395375, 1805985, 1583085, 1986795  (xmin, xmax, ymin, ymax)
+#extent      : -80.25834, -74.74974, 35.56247, 39.80676  (xmin, xmax, ymin, ymax)
+
 use_reg_extent = True
 os.chdir(in_dir)
 
@@ -119,7 +123,47 @@ ee.Initialize()
 #32 days TOA or 
 
 # Load a landsat image and select three bands.
+#img_col_landsat = ee.ImageCollection('LANDSAT/LT5_L1T_ANNUAL_TOA')
+img_collection = ee.ImageCollection("LANDSAT/LT5_L1T_32DAY_TOA")
+img_collection = ee.ImageCollection("MODIS/MCD43A4_NDVI")
+
+
+img_collection = img_collection.filterDate('2002-01-01', '2003-01-01');
+
+dates = ee.List(img_collection.get('date_range'));
+
+dateRange = ee.DateRange(dates.get(0), dates.get(1));
+print('Date range: ', dateRange);
+
+size = img_collection.toList(100).length();
+list_img = img_collection.toList(100);
+list_img[0]
+
+image = ee.Image(ee.List(list_img).get(0))
+image1 = ee.Image(ee.List(list_img).get(1))
+
+time0 = img_collection.first().get('system:time_start');
+
+median = img_col_landsat.median();
+
+var img_col_landsat = ee.ImageCollection("LANDSAT/LT5_L1T_32DAY_TOA")
+    img_col_landsat.
+    
+// Clip to the output image to the Nevada and Arizona state boundaries.
+var fc = ee.FeatureCollection('ft:1fRY18cjsHzDgGiJiS2nnpUU3v9JPDc2HNaR7Xk8')
+    .filter(ee.Filter.or(
+         ee.Filter.eq('Name', 'Nevada'),
+         ee.Filter.eq('Name', 'Arizona')));
+var clipped = median.clipToCollection(fc);
+
+// Select the red, green and blue bands.
+var result = clipped.select('B3', 'B2', 'B1');
+Map.addLayer(result, {gain: '1.4, 1.4, 1.1'});
+Map.setCenter(-110, 40, 5);
+
+
 landsat = ee.Image('LANDSAT/LC8_L1T_TOA/LC81230322014135LGN00')
+landsat = ee.Image('LANDSAT/LC8_L1T/LC80440342014077LGN00')
 landsat.select(['B4', 'B3', 'B2'])
 landsat.select(['B1'])
 
@@ -139,27 +183,64 @@ list_bands_info = image_info['bands']
 type(list_bands_info[0])
 
 # Create a geometry representing an export region.
-geometry = ee.Geometry.Rectangle([116.2621, 39.8412, 116.4849, 40.01236])
+#xmin,ymin,xmax,ymax
+#geometry = ee.Geometry.Rectangle([116.2621, 39.8412, 116.4849, 40.01236])
+#-80.25834, -74.74974, 35.56247, 39.80676  (xmin, xmax, ymin, ymax)
+
+#geometry = ee.Geometry.Rectangle([-80.25834, 35.56247, -74.74974, 39.80676])
 
 # Export the image, specifying scale and region.
 
-llx = 116.2621
-lly = 39.8412
-urx = 116.4849
-ury = 40.01236
-geometry = [[llx,lly], [llx,ury], [urx,ury], [urx,lly]]
+#llx = 116.2621
+#lly = 39.8412
+#urx = 116.4849
+#ury = 40.01236
+
+
+#llx = -80.25834 #minx
+#lly = 35.56247 #ymin
+#urx = -74.74974 #xmax
+#ury = 39.80676 #ymax
+
+w_extent = w_extent_str.split() #split string into a list
+
+llx = float(w_extent[0])#minx
+lly = float(w_extent[3]) #ymin
+urx = float(w_extent[2]) #xmax
+ury = float(w_extent[1]) #ymax
+
+#geometry_extent = [[llx,lly], [llx,ury], [urx,ury], [urx,lly]]
+geometry_extent = [llx, lly, urx, ury]
 
 geometry = ee.Geometry.Rectangle([116.2621, 39.8412, 116.4849, 40.01236])
+#geometry = ee.Geometry.Rectangle([-80.25834, 35.56247, -74.74974, 39.80676])
+geometry = ee.Geometry.Rectangle(geometry_extent)
+#geometry = ee.Geometry(geometry_extent)
+
 geometry = geometry['coordinates'][0]
 
 ##Export does not work with python api, need to use batch mode
 
 ##Note description will pick the name of output file, it should not include the extenion
-task = ee.batch.Export.image.toDrive(image=image,description='SRTM90_V4',folder='Data_SESYNC_earthengine',region=geometry,scale=30)
+task = ee.batch.Export.image.toDrive(image=image,
+                                     description='SRTM90_V4',
+                                     folder='Data_SESYNC_earthengine',
+                                     region=geometry,scale=30)
 task.start()
 
 ## THis is still not working here:
-task = ee.batch.Export.image.toDrive(image=landsat,description='exportTest3',folder='./Data/SESYNC/earthengine_google',region=geometry,scale=30)
+task = ee.batch.Export.image.toDrive(image=image,
+                                     description='exportTest12',
+                                     folder='Data_SESYNC_earthengine',
+                                     region=geometry,
+                                     scale=30)
+task.start()
+
+task = ee.batch.Export.image.toDrive(image=image1,
+                                     description='iamge1',
+                                     folder='Data_SESYNC_earthengine',
+                                     region=geometry,
+                                     scale=30)
 task.start()
 
 ######################## END OF SCRIPT ##############
@@ -179,6 +260,23 @@ task.start()
 #    region: geometry
 #    });
 
+img_col_landsat = ee.ImageCollection("LANDSAT/LT5_L1T_32DAY_TOA")
 
 
+var collection = ee.ImageCollection('LE7_L1T')
+    .filterDate('2000-04-01', '2000-07-01');
+var median = collection.median();
+var img_col_landsat = ee.ImageCollection("LANDSAT/LT5_L1T_32DAY_TOA")
+    img_col_landsat.
+    
+// Clip to the output image to the Nevada and Arizona state boundaries.
+var fc = ee.FeatureCollection('ft:1fRY18cjsHzDgGiJiS2nnpUU3v9JPDc2HNaR7Xk8')
+    .filter(ee.Filter.or(
+         ee.Filter.eq('Name', 'Nevada'),
+         ee.Filter.eq('Name', 'Arizona')));
+var clipped = median.clipToCollection(fc);
 
+// Select the red, green and blue bands.
+var result = clipped.select('B3', 'B2', 'B1');
+Map.addLayer(result, {gain: '1.4, 1.4, 1.1'});
+Map.setCenter(-110, 40, 5);
