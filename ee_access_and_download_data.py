@@ -59,7 +59,7 @@ from ee_access_and_download_data_functions import *
 
 #in_dir = "/home/parmentier/Data/IPLANT_project/Maine_interpolation/DSS_SSI_data/"
 in_dir ="/home/bparmentier/z_drive/Data/projects/earthengine_google/outputs" 
-
+out_dir_google_drive = 'Data_SESYNC_earthengine'
 #Input shape file used to define the zonal regions: could be town or counties in this context
 shp_fname = os.path.join(in_dir,"county24.shp")
 #input shp defining study area: can be the same as shp_fname or different                                       
@@ -76,6 +76,7 @@ NA_flag_val = -9999
 output_type = "Float32"
 out_suffix = "gee_08142017"
 
+product_name = "MODIS/MCD43A4_NDVI" #Image collection ID
 #w_extent_str = "-72 48 -65 41" #minx,maxy (upper left), maxx,miny (lower right)
 w_extent_str = "-80.25834 39.80676 -74.74974 35.56247"
 #extent      : 1395375, 1805985, 1583085, 1986795  (xmin, xmax, ymin, ymax)
@@ -124,9 +125,11 @@ ee.Initialize()
 
 # Load a landsat image and select three bands.
 #img_col_landsat = ee.ImageCollection('LANDSAT/LT5_L1T_ANNUAL_TOA')
-img_collection = ee.ImageCollection("LANDSAT/LT5_L1T_32DAY_TOA")
-img_collection = ee.ImageCollection("MODIS/MCD43A4_NDVI")
-
+#img_collection = ee.ImageCollection("LANDSAT/LT5_L1T_32DAY_TOA")
+#img_collection = ee.ImageCollection("MODIS/MCD43A4_NDVI")
+img_collection = ee.ImageCollection(product_name)
+### Get elevation data for example:
+#image = ee.Image('CGIAR/SRTM90_V4');
 
 img_collection = img_collection.filterDate('2002-01-01', '2003-01-01');
 
@@ -135,46 +138,26 @@ dates = ee.List(img_collection.get('date_range'));
 dateRange = ee.DateRange(dates.get(0), dates.get(1));
 print('Date range: ', dateRange);
 
+dateRange.getInfo()
+
 size = img_collection.toList(100).length();
+number_img =size.getInfo()
+print("Number of image in the collection:" ,number_img)
+
 list_img = img_collection.toList(100);
 list_img[0]
 
-image = ee.Image(ee.List(list_img).get(0))
+image = ee.Image(ee.List(list_img).get(0)) #select first image
 image1 = ee.Image(ee.List(list_img).get(1))
 
 time0 = img_collection.first().get('system:time_start');
 
-median = img_col_landsat.median();
+#landsat = ee.Image('LANDSAT/LT5_L1T_32DAY_TOA')
+#landsat.select(['B4', 'B3', 'B2']) #Green (B1), Red (B2), B3 (NIR), B
+#landsat.select(['B1'])
 
-var img_col_landsat = ee.ImageCollection("LANDSAT/LT5_L1T_32DAY_TOA")
-    img_col_landsat.
-    
-// Clip to the output image to the Nevada and Arizona state boundaries.
-var fc = ee.FeatureCollection('ft:1fRY18cjsHzDgGiJiS2nnpUU3v9JPDc2HNaR7Xk8')
-    .filter(ee.Filter.or(
-         ee.Filter.eq('Name', 'Nevada'),
-         ee.Filter.eq('Name', 'Arizona')));
-var clipped = median.clipToCollection(fc);
+#landsat.getInfo()
 
-// Select the red, green and blue bands.
-var result = clipped.select('B3', 'B2', 'B1');
-Map.addLayer(result, {gain: '1.4, 1.4, 1.1'});
-Map.setCenter(-110, 40, 5);
-
-
-landsat = ee.Image('LANDSAT/LC8_L1T_TOA/LC81230322014135LGN00')
-landsat = ee.Image('LANDSAT/LC8_L1T/LC80440342014077LGN00')
-landsat.select(['B4', 'B3', 'B2'])
-landsat.select(['B1'])
-
-landsat = ee.Image('LANDSAT/LT5_L1T_32DAY_TOA')
-landsat.select(['B4', 'B3', 'B2']) #Green (B1), Red (B2), B3 (NIR), B
-landsat.select(['B1'])
-
-landsat.getInfo()
-
-### Get elevation data for example:
-image = ee.Image('CGIAR/SRTM90_V4');
 image_info = image.getInfo() #this is a dict
 
 print "image_info['bands']: ", image_info['bands']
@@ -213,35 +196,48 @@ ury = float(w_extent[1]) #ymax
 geometry_extent = [llx, lly, urx, ury]
 
 geometry = ee.Geometry.Rectangle([116.2621, 39.8412, 116.4849, 40.01236])
-#geometry = ee.Geometry.Rectangle([-80.25834, 35.56247, -74.74974, 39.80676])
+geometry = ee.Geometry.Rectangle([-80.25834, 35.56247, -74.74974, 39.80676])
 geometry = ee.Geometry.Rectangle(geometry_extent)
 #geometry = ee.Geometry(geometry_extent)
 
-geometry = geometry['coordinates'][0]
+geometry.getInfo()
+type(geometry)
+geometry_coordinates = geometry['coordinates'][0] #as list
 
 ##Export does not work with python api, need to use batch mode
+scale= 1000 #for MODIS this should be 1000km
 
-##Note description will pick the name of output file, it should not include the extenion
-task = ee.batch.Export.image.toDrive(image=image,
-                                     description='SRTM90_V4',
-                                     folder='Data_SESYNC_earthengine',
-                                     region=geometry,scale=30)
-task.start()
-
-## THis is still not working here:
-task = ee.batch.Export.image.toDrive(image=image,
-                                     description='exportTest12',
-                                     folder='Data_SESYNC_earthengine',
-                                     region=geometry,
-                                     scale=30)
-task.start()
-
-task = ee.batch.Export.image.toDrive(image=image1,
-                                     description='iamge1',
-                                     folder='Data_SESYNC_earthengine',
-                                     region=geometry,
-                                     scale=30)
-task.start()
+### Make this loop a function!!!
+for i in range(0,4):
+    
+    #image = ee.Image(ee.List(list_img).get(0)) #select first image
+    image = ee.Image(ee.List(list_img).get(i)) #select first image
+     
+    dataset_name = os.path.basename(product_name)
+    #out_filename = "".join([dataset_name,
+    #                        "_"+str(scale),
+    #                        "_"+str(i),
+    #                        "_"+out_suffix,
+    #                       file_format])
+    #             #EEException: Invalid Drive file name prefix.
+         
+    out_filename = "".join([dataset_name,
+                            "_"+str(scale),
+                            "_"+str(i),
+                            "_"+out_suffix])
+    #task = ee.batch.Export.image.toDrive(image=image,
+    #                                 description='image1_1000',
+    #                                 folder='Data_SESYNC_earthengine',
+    #                                 region=geometry,
+    #                                 scale=1000)
+                                     
+    task = ee.batch.Export.image.toDrive(image=image,
+                                     description=out_filename,
+                                     folder=out_dir_google_drive,
+                                     region=geometry_coordinates,
+                                     scale=scale)
+    
+    task.start()
 
 ######################## END OF SCRIPT ##############
 
@@ -260,23 +256,23 @@ task.start()
 #    region: geometry
 #    });
 
-img_col_landsat = ee.ImageCollection("LANDSAT/LT5_L1T_32DAY_TOA")
+#img_col_landsat = ee.ImageCollection("LANDSAT/LT5_L1T_32DAY_TOA")
 
 
-var collection = ee.ImageCollection('LE7_L1T')
-    .filterDate('2000-04-01', '2000-07-01');
-var median = collection.median();
-var img_col_landsat = ee.ImageCollection("LANDSAT/LT5_L1T_32DAY_TOA")
-    img_col_landsat.
+#var collection = ee.ImageCollection('LE7_L1T')
+#    .filterDate('2000-04-01', '2000-07-01');
+#var median = collection.median();
+#var img_col_landsat = ee.ImageCollection("LANDSAT/LT5_L1T_32DAY_TOA")
+#    img_col_landsat.
     
-// Clip to the output image to the Nevada and Arizona state boundaries.
-var fc = ee.FeatureCollection('ft:1fRY18cjsHzDgGiJiS2nnpUU3v9JPDc2HNaR7Xk8')
-    .filter(ee.Filter.or(
-         ee.Filter.eq('Name', 'Nevada'),
-         ee.Filter.eq('Name', 'Arizona')));
-var clipped = median.clipToCollection(fc);
+#// Clip to the output image to the Nevada and Arizona state boundaries.
+#var fc = ee.FeatureCollection('ft:1fRY18cjsHzDgGiJiS2nnpUU3v9JPDc2HNaR7Xk8')
+#    .filter(ee.Filter.or(
+#         ee.Filter.eq('Name', 'Nevada'),
+#         ee.Filter.eq('Name', 'Arizona')));
+#var clipped = median.clipToCollection(fc);
 
-// Select the red, green and blue bands.
-var result = clipped.select('B3', 'B2', 'B1');
-Map.addLayer(result, {gain: '1.4, 1.4, 1.1'});
-Map.setCenter(-110, 40, 5);
+#// Select the red, green and blue bands.
+#var result = clipped.select('B3', 'B2', 'B1');
+#Map.addLayer(result, {gain: '1.4, 1.4, 1.1'});
+#Map.setCenter(-110, 40, 5);
