@@ -17,7 +17,7 @@ This is a temporary script file.
 #
 # Authors: Benoit Parmentier 
 # Created on: 07/24/2017
-# Updated on: 08/14/2017
+# Updated on: 08/15/2017
 
 import os, glob
 import subprocess
@@ -76,7 +76,8 @@ NA_flag_val = -9999
 output_type = "Float32"
 out_suffix = "gee_08142017"
 
-product_name = "MODIS/MCD43A4_NDVI" #Image collection ID
+product_name = "LANDSAT/LT5_L1T_32DAY_TOA"
+#product_name = "MODIS/MCD43A4_NDVI" #Image collection ID
 #w_extent_str = "-72 48 -65 41" #minx,maxy (upper left), maxx,miny (lower right)
 w_extent_str = "-80.25834 39.80676 -74.74974 35.56247"
 #extent      : 1395375, 1805985, 1583085, 1986795  (xmin, xmax, ymin, ymax)
@@ -131,6 +132,11 @@ img_collection = ee.ImageCollection(product_name)
 ### Get elevation data for example:
 #image = ee.Image('CGIAR/SRTM90_V4');
 
+info_obj= img_collection.getInfo()
+info_obj['type']
+info_obj.keys()
+print(info_obj)
+
 img_collection = img_collection.filterDate('2002-01-01', '2003-01-01');
 
 dates = ee.List(img_collection.get('date_range'));
@@ -138,14 +144,13 @@ dates = ee.List(img_collection.get('date_range'));
 dateRange = ee.DateRange(dates.get(0), dates.get(1));
 print('Date range: ', dateRange);
 
-dateRange.getInfo()
-
 size = img_collection.toList(100).length();
-number_img =size.getInfo()
+number_img =size.getInfo() #use getInfo if in python!!!
+
 print("Number of image in the collection:" ,number_img)
 
 list_img = img_collection.toList(100);
-list_img[0]
+#list_img[0]
 
 image = ee.Image(ee.List(list_img).get(0)) #select first image
 image1 = ee.Image(ee.List(list_img).get(1))
@@ -206,6 +211,11 @@ geometry_coordinates = geometry['coordinates'][0] #as list
 
 ##Export does not work with python api, need to use batch mode
 scale= 1000 #for MODIS this should be 1000km
+scale= 30 #for MODIS this should be 1000km
+
+#Set the pixel max size
+#Error: Export too large: specified 321945750 pixels (max: 100000000). Specify higher maxPixels value if you intend to export a large area.
+max_pixels = 1000000000
 
 ### Make this loop a function!!!
 for i in range(0,4):
@@ -235,6 +245,7 @@ for i in range(0,4):
                                      description=out_filename,
                                      folder=out_dir_google_drive,
                                      region=geometry_coordinates,
+                                     maxPixels=max_pixels,
                                      scale=scale)
     
     task.start()
