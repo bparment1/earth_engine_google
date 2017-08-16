@@ -83,6 +83,8 @@ w_extent_str = "-80.25834 39.80676 -74.74974 35.56247"
 #extent      : 1395375, 1805985, 1583085, 1986795  (xmin, xmax, ymin, ymax)
 #extent      : -80.25834, -74.74974, 35.56247, 39.80676  (xmin, xmax, ymin, ymax)
 
+max_pixels = 1000000000
+scale = 30
 use_reg_extent = True
 os.chdir(in_dir)
 
@@ -170,20 +172,12 @@ list_bands_info = image_info['bands']
 
 type(list_bands_info[0])
 
-# Create a geometry representing an export region.
-#xmin,ymin,xmax,ymax
-#geometry = ee.Geometry.Rectangle([116.2621, 39.8412, 116.4849, 40.01236])
-#-80.25834, -74.74974, 35.56247, 39.80676  (xmin, xmax, ymin, ymax)
+date0 = image_info['properties']['system:index']
 
-#geometry = ee.Geometry.Rectangle([-80.25834, 35.56247, -74.74974, 39.80676])
+# Create a geometry representing an export region.
+
 
 # Export the image, specifying scale and region.
-
-#llx = 116.2621
-#lly = 39.8412
-#urx = 116.4849
-#ury = 40.01236
-
 
 #llx = -80.25834 #minx
 #lly = 35.56247 #ymin
@@ -200,8 +194,8 @@ ury = float(w_extent[1]) #ymax
 #geometry_extent = [[llx,lly], [llx,ury], [urx,ury], [urx,lly]]
 geometry_extent = [llx, lly, urx, ury]
 
-geometry = ee.Geometry.Rectangle([116.2621, 39.8412, 116.4849, 40.01236])
-geometry = ee.Geometry.Rectangle([-80.25834, 35.56247, -74.74974, 39.80676])
+#geometry = ee.Geometry.Rectangle([116.2621, 39.8412, 116.4849, 40.01236])
+#geometry = ee.Geometry.Rectangle([-80.25834, 35.56247, -74.74974, 39.80676])
 geometry = ee.Geometry.Rectangle(geometry_extent)
 #geometry = ee.Geometry(geometry_extent)
 
@@ -215,14 +209,17 @@ scale= 30 #for MODIS this should be 1000km
 
 #Set the pixel max size
 #Error: Export too large: specified 321945750 pixels (max: 100000000). Specify higher maxPixels value if you intend to export a large area.
-max_pixels = 1000000000
+
 
 ### Make this loop a function!!!
-for i in range(0,4):
+### Make a functin and use map
+for i in range(0,number_img):
     
     #image = ee.Image(ee.List(list_img).get(0)) #select first image
     image = ee.Image(ee.List(list_img).get(i)) #select first image
      
+    date_val = image_info['properties']['system:index'] #get value
+
     dataset_name = os.path.basename(product_name)
     #out_filename = "".join([dataset_name,
     #                        "_"+str(scale),
@@ -232,14 +229,17 @@ for i in range(0,4):
     #             #EEException: Invalid Drive file name prefix.
          
     out_filename = "".join([dataset_name,
+                            "_"+date_val,
                             "_"+str(scale),
                             "_"+str(i),
                             "_"+out_suffix])
+
     #task = ee.batch.Export.image.toDrive(image=image,
-    #                                 description='image1_1000',
-    #                                 folder='Data_SESYNC_earthengine',
-    #                                 region=geometry,
-    #                                 scale=1000)
+    #                                 description="test_landsat",
+    #                                 folder=out_dir_google_drive,
+    #                                 region=geometry_coordinates,
+    #                                 maxPixels=max_pixels,
+    #                                 scale=scale)
                                      
     task = ee.batch.Export.image.toDrive(image=image,
                                      description=out_filename,
