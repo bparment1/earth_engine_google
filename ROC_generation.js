@@ -76,8 +76,9 @@ agri = /* color: #0ee600 */ee.FeatureCollection(
 var ndvi = ee.Image("LANDSAT/LC8_L1T_TOA/LC80440342013106LGN01").normalizedDifference(['B5', 'B4']).rename('NDVI');
 Map.addLayer(ndvi,{min:0, max:1}, "NDVI")
 
-// Sample input points.
-agri = ndvi.reduceRegions(agri,ee.Reducer.max().setOutputs(['ndvi']),30).map(function(x){return x.set('is_target',1);})
+// Sample input points: Extract max value of NDVI for each feature and add field
+agri = ndvi.reduceRegions(agri,
+                          ee.Reducer.max().setOutputs(['ndvi']),30).map(function(x){return x.set('is_target',1);})
 urban = ndvi.reduceRegions(urban,ee.Reducer.max().setOutputs(['ndvi']),30).map(function(x){return x.set('is_target',0);})
 
 print("agri", agri);
@@ -95,10 +96,18 @@ print(urban.aggregate_array('ndvi'),'Urban NDVI')
 // Chance these as needed
 var ROC_field = 'ndvi', ROC_min = 0, ROC_max = 1, ROC_steps = 1000, ROC_points = combined
 
+// Note that ROC_field sets the name corresponding to the index
+
+print("Print ROC_points object: ",ROC_points)
 //generate a sequence with start, end, steps, count
 var threshold_seq = ee.List.sequence(ROC_min, ROC_max, null, ROC_steps) //note 
 print("Testing threshold_seq: ",threshold_seq)
 
+var target_roc_test = ROC_points.filterMetadata('is_target','equals',1)
+print("target_roc_test: ",target_roc_test)
+print("target_roc_test size: ",target_roc_test.size())
+
+// producing ROC_table
 var ROC = ee.FeatureCollection(ee.List.sequence(ROC_min, ROC_max, null, ROC_steps).map(function (cutoff) {
   var target_roc = ROC_points.filterMetadata('is_target','equals',1)
   // true-positive-rate, sensitivity  
