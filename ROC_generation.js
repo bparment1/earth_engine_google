@@ -2,7 +2,7 @@
  * Research Support SESYNC.
  * ROC assessment of crop consensus layer by Varsha Vijay
  * Created: 05/07/2019
- * Modified 05/07/2019
+ * Modified 05/08/2019
  * 
  * Authors: Benoit Parmentier, Varsha Vijay
  * 
@@ -17,22 +17,21 @@
 
 /********* INPUT PARAMETERS AND ARGUMENTS *************/
 
+var validation = "users/varshavijay101/croploctraingeowiki"
+
 // A crop consensus image
 var crop1k = ee.Image("users/varshavijay101/AgricultureBiodiversity/cropfinal1km")
 // validatation data from geowiki as a feature collection object
-var validation = ee.FeatureCollection("users/varshavijay101/croploctraingeowiki")
-
+var cropbinary = ee.FeatureCollection(validation)
 
 /********** START OF SCRIPT ************/
 
 // Visualize the input map
 Map.addLayer(crop1k,{min:0, max:1}, "crop1k")
 // Check validation
-print("Validation input: ",validation)
-
-var cropbinary=ee.FeatureCollection(validation)
-
-print("Validation data:", cropbinary)
+print("Validation input: ",cropbinary)
+//Map.addLayer(cropbinary,{color: 'FF0000'})
+Map.addLayer(cropbinary,{color: 'blue'})
 
 var addImgvalue = function(feature) {
   var cropclass= crop1k.reduceRegion({
@@ -43,6 +42,7 @@ var addImgvalue = function(feature) {
   return feature.set({'cropclass': cropclass.get('b1')});
 };
 
+// Extraction for image for every feature in FeatureCollection
 var cropvalidation=cropbinary.map(addImgvalue)
 //print(cropvalidation.first())
 //print(cropbinary.first())
@@ -72,13 +72,31 @@ print("Crop validation: ", cropvalidation)
 print("Crop validation: ", cropvalidation)
 
 
-//var cropvalidation=cropbinary.map(addImgvalue)
+
+// add field is_target
+
+//var function featureadd
+//cropvalidation.set({'is_target':cropvalidation.set{'cropmaj'})
+
+// Add is target feature.
+var addFeature = function(feature){
+  return feature.set({'is_target':feature.get('cropmaj')})
+};
+
+var cropvalidation=cropvalidation.map(addFeature)
+
+print("Crop validation added cropmaj: ", cropvalidation)
+  
+// Sample input points.
+//agri = ndvi.reduceRegions(agri,ee.Reducer.max().setOutputs(['ndvi']),30).map(function(x){return x.set('is_target',1);})
+//urban = ndvi.reduceRegions(urban,ee.Reducer.max().setOutputs(['ndvi']),30).map(function(x){return x.set('is_target',0);})
+//var combined = agri.merge(urban)
 
 // Calculate the Receiver Operating Characteristic (ROC) curve
 // -----------------------------------------------------------
 
 // Chance these as needed
-var ROC_field = 'cropclass', ROC_min = 0, ROC_max = 1, ROC_steps = 1000, ROC_points = cropvalidation
+var ROC_field = 'cropclass', ROC_min = 0, ROC_max = 1, ROC_steps = 100, ROC_points = cropvalidation
 
 // Note that ROC_field sets the name corresponding to the index
 
@@ -90,6 +108,14 @@ print("Testing threshold_seq: ",threshold_seq)
 var target_roc_test = ROC_points.filterMetadata('is_target','equals',1)
 print("target_roc_test: ",target_roc_test)
 print("target_roc_test size: ",target_roc_test.size())
+var target_roc_negative = ROC_points.filterMetadata('is_target','equals',0)
+print("target_roc_test size: ",target_roc_negative.size())
+
+//test one specific threshold value at 0.5
+
+var cutoffVal = 0.5
+var TPR = ee.Number(target_roc_test.filterMetadata(ROC_field,'greater_than',cutoffVal).size()).divide(target_roc_test.size()) 
+print("Threshold 0.5 TPR:",TPR)
 
 // producing ROC_table 
 var ROC = ee.FeatureCollection(ee.List.sequence(ROC_min, ROC_max, null, ROC_steps).map(function (cutoff) {
@@ -118,9 +144,16 @@ print(ui.Chart.feature.byFeature(ROC, 'FPR', 'TPR').setOptions({
       title: 'ROC curve',
       legend: 'none',
       hAxis: { title: 'False-positive-rate'},
-      vAxis: { title: 'True-negative-rate'},
+      vAxis: { title: 'True-positive-rate'},
       lineWidth: 1}))
 // find the cutoff value whose ROC point is closest to (0,1) (= "perfect classification")      
 var ROC_best = ROC.sort('dist').first().get('cutoff').aside(print,'best ROC point cutoff')
+
+//compute Recall and precision:
+
+//recall: is TPR
+
+//precision is Positive Predictive value
+
 
 /****************** END OF SCRIPT *******************************/
